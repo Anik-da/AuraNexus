@@ -1,0 +1,11 @@
+I have redesigned the landing page in `src/app/page.tsx` to align with the Codepen design and its custom grid system layout.
+
+### 🎨 What Was Changed
+
+1. **Incorporated the Codepen Page Shell (`news-shell` & `hero-panel`)**
+   * Configured the entire landing page body to sit inside the `.news-shell` container, adopting the margins, responsive paddings, and alignment specifications from the Codepen design.
+   * Redesigned the top hero section to use the `.hero-panel` structure, splitting the hero copy content onto the left and placing the interactive 3D robot scene inside the circular `.orb-card` (complete with layered rotating neon rings) on the right.
+
+2. **Standardized Control Elements & Ticker**
+   * Adapted the button row to use the `.control-strip` wrapper and `.control-button` styling. The buttons now hover, scale, and interactively morph in real-time exactly like the controls on the Codepen signal grid.
+<truncated 828 bytes>
