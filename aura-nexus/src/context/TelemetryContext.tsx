@@ -109,80 +109,169 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     missions: INITIAL_MISSIONS,
   });
 
-  const logsEndRef = useRef<LogMessage[]>(state.logs);
-  logsEndRef.current = state.logs;
+  const wsRef = useRef<WebSocket | null>(null);
 
   const toggleDeviceConnection = (connected: boolean) => {
-    setState((prev) => {
-      const timeStr = new Date().toLocaleTimeString("en-US", { hour12: false });
-      if (connected) {
-        return {
-          ...prev,
-          isDeviceConnected: true,
-          connectivity: "connected",
-          batteryLevel: 89,
-          signalStrength: 94,
-          robotMode: "manual",
-          coordinates: { x: 14.2, y: 0.0, z: -8.7, lat: 37.774929, lng: -122.419416 },
-          heading: 180,
-          speed: 0.0,
-          sensors: {
-            temp: 24.5,
-            humidity: 58.2,
-            soilMoisture: 42.1,
-            obstacleDistance: 3.4,
-            lightLevel: 680,
-            methane: 0.02,
-          },
-          camera: {
-            pan: 0,
-            tilt: 15,
-            zoom: 1,
-            streamActive: true,
-            feedType: "optical",
-          },
-          detections: [
-            { id: "D1", label: "HEALTHY MAIZE", confidence: 96.8, box: [20, 30, 25, 40], timestamp: timeStr },
-          ],
-          logs: [
-            { id: `L-${Math.random()}`, timestamp: timeStr, type: "success", text: "DEVICE LINK OPENED: ESP32 Handshake Succeeded." },
-            ...prev.logs
-          ]
-        };
-      } else {
+    if (connected) {
+      if (typeof window !== "undefined") {
+        const defaultUrl = window.location.hostname === "localhost" 
+          ? "ws://localhost:8000/api/v1/ws/telemetry" 
+          : "wss://YOUR_NGROK_SUBDOMAIN.ngrok-free.app/api/v1/ws/telemetry";
+        
+        const url = prompt(
+          "Enter your FastAPI WebSocket URL (e.g. ws://localhost:8000/api/v1/ws/telemetry or wss://xxxx.ngrok-free.app/api/v1/ws/telemetry for secure Firebase hosting):",
+          localStorage.getItem("aura_ws_url") || defaultUrl
+        );
+        
+        if (!url) return;
+        localStorage.setItem("aura_ws_url", url);
+
+        try {
+          if (wsRef.current) wsRef.current.close();
+          
+          const ws = new WebSocket(url);
+          wsRef.current = ws;
+
+          setState((prev) => ({
+            ...prev,
+            connectivity: "reconnecting",
+            logs: [
+              { id: `L-${Math.random()}`, timestamp: new Date().toLocaleTimeString("en-US", { hour12: false }), type: "info", text: `CONNECTING TO GATEWAY: ${url}...` },
+              ...prev.logs
+            ]
+          }));
+
+          ws.onopen = () => {
+            const timeStr = new Date().toLocaleTimeString("en-US", { hour12: false });
+            setState((prev) => ({
+              ...prev,
+              isDeviceConnected: true,
+              connectivity: "connected",
+              logs: [
+                { id: `L-${Math.random()}`, timestamp: timeStr, type: "success", text: "DEVICE LINK ESTABLISHED: Live gateway channel active." },
+                ...prev.logs
+              ]
+            }));
+          };
+
+          ws.onmessage = (event) => {
+            try {
+              const payload = JSON.parse(event.data);
+              setState((prev) => {
+                const timeStr = new Date().toLocaleTimeString("en-US", { hour12: false });
+                
+                const sensors = payload.sensors ? {
+                  temp: payload.sensors.temp ?? prev.sensors.temp,
+                  humidity: payload.sensors.humidity ?? prev.sensors.humidity,
+                  soilMoisture: payload.sensors.soilMoisture ?? prev.sensors.soilMoisture,
+                  obstacleDistance: payload.sensors.obstacleDistance ?? prev.sensors.obstacleDistance,
+                  lightLevel: payload.sensors.lightLevel ?? prev.sensors.lightLevel,
+                  methane: payload.sensors.methane ?? prev.sensors.methane,
+                } : prev.sensors;
+
+                const battery = payload.battery_level ?? prev.batteryLevel;
+                const signal = payload.signal_strength ?? prev.signalStrength;
+                const speed = payload.speed ?? prev.speed;
+                const heading = payload.heading ?? prev.heading;
+                const coordinates = payload.coordinates ? {
+                  x: payload.coordinates.x ?? prev.coordinates.x,
+                  y: payload.coordinates.y ?? prev.coordinates.y,
+                  z: payload.coordinates.z ?? prev.coordinates.z,
+                  lat: payload.coordinates.lat ?? prev.coordinates.lat,
+                  lng: payload.coordinates.lng ?? prev.coordinates.lng,
+                } : prev.coordinates;
+
+                let logs = prev.logs;
+                if (payload.logs && Array.isArray(payload.logs)) {
+                  const newLogs = payload.logs.map((l: any) => ({
+                    id: l.id ?? `L-${Math.random()}`,
+                    timestamp: l.timestamp ?? timeStr,
+                    type: l.type ?? "info",
+                    text: l.text
+                  }));
+                  logs = [...newLogs, ...prev.logs].slice(0, 100);
+                }
+
+                let detections = prev.detections;
+                if (payload.detections && Array.isArray(payload.detections)) {
+                  detections = payload.detections.map((d: any) => ({
+                    id: d.id ?? `D-${Math.random()}`,
+                    label: d.label,
+                    confidence: d.confidence,
+                    box: d.box ?? [20, 20, 30, 30],
+                    timestamp: d.timestamp ?? timeStr
+                  }));
+                }
+
+                return {
+                  ...prev,
+                  batteryLevel: battery,
+                  signalStrength: signal,
+                  speed,
+                  heading,
+                  coordinates,
+                  sensors,
+                  logs,
+                  detections,
+                };
+              });
+            } catch (err) {
+              console.error("Error parsing WebSocket telemetry payload:", err);
+            }
+          };
+
+          ws.onerror = () => {
+            const timeStr = new Date().toLocaleTimeString("en-US", { hour12: false });
+            setState((prev) => ({
+              ...prev,
+              isDeviceConnected: false,
+              connectivity: "offline",
+              logs: [
+                { id: `L-${Math.random()}`, timestamp: timeStr, type: "error", text: "DEVICE LINK ERROR: WebSocket handshake failed." },
+                ...prev.logs
+              ]
+            }));
+          };
+
+          ws.onclose = () => {
+            const timeStr = new Date().toLocaleTimeString("en-US", { hour12: false });
+            setState((prev) => ({
+              ...prev,
+              isDeviceConnected: false,
+              connectivity: "offline",
+              logs: [
+                { id: `L-${Math.random()}`, timestamp: timeStr, type: "error", text: "DEVICE LINK CLOSED: Gateway terminated socket channel." },
+                ...prev.logs
+              ]
+            }));
+          };
+
+        } catch (e: any) {
+          console.error(e);
+        }
+      }
+    } else {
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      setState((prev) => {
+        const timeStr = new Date().toLocaleTimeString("en-US", { hour12: false });
         return {
           ...prev,
           isDeviceConnected: false,
           connectivity: "offline",
           batteryLevel: 0,
           signalStrength: 0,
-          robotMode: "manual",
-          coordinates: { x: 0, y: 0, z: 0, lat: 0, lng: 0 },
-          heading: 0,
-          speed: 0,
-          sensors: {
-            temp: 0,
-            humidity: 0,
-            soilMoisture: 0,
-            obstacleDistance: 0,
-            lightLevel: 0,
-            methane: 0,
-          },
-          camera: {
-            pan: 0,
-            tilt: 0,
-            zoom: 1,
-            streamActive: false,
-            feedType: "optical",
-          },
+          sensors: { temp: 0, humidity: 0, soilMoisture: 0, obstacleDistance: 0, lightLevel: 0, methane: 0 },
           detections: [],
           logs: [
             { id: `L-${Math.random()}`, timestamp: timeStr, type: "error", text: "DEVICE LINK CLOSED: Connection terminated by operator." },
             ...prev.logs
           ]
         };
-      }
-    });
+      });
+    }
   };
 
   const addLog = (text: string, type: LogMessage["type"] = "info") => {
