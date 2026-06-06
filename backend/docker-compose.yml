@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - JWT_SECRET_KEY=aura_nexus_super_secret_cryptographic_key_9f2d7c
+      - FIREBASE_PROJECT_ID=aura-nexus-esp
+    volumes:
+      - .:/workspace
+    restart: always

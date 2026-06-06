@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# next.js
+.next/
+out/
+
+# production / build
+build/
+dist/
+
+# Firebase
+.firebase/
+*-debug.log*
+firebase-debug.log
+
+# misc
+.DS_Store
+*.pem
+.env*
+*.tsbuildinfo
+prettify.py
+scratch_extract.py
+extracted_codepen.html
+formatted_codepen.html
