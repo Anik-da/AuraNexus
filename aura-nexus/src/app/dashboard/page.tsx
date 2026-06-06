@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import AuraShell from "@/components/AuraShell";
-import AuraCockpit from "@/components/AuraCockpit";
+import SubsystemNodeMap from "@/components/SubsystemNodeMap";
 import { useTelemetry } from "@/context/TelemetryContext";
 
 export default function Dashboard() {
-  const { isDeviceConnected, signalStrength, logs, toggleDeviceConnection } = useTelemetry();
+  const { isDeviceConnected, signalStrength, logs, toggleDeviceConnection, sensors } = useTelemetry();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -117,10 +117,104 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* 3. Operational Cockpit Override Console */}
-        <section aria-label="Operational cockpit controls override">
-          {mounted && <AuraCockpit />}
-        </section>
+        {/* 3. Subsystems and Real-time Diagnostics Grid */}
+        {mounted && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Subsystem Node Map (span 5) */}
+            <div className="lg:col-span-5 flex flex-col justify-between">
+              <div className="robotics-card p-6 h-full flex flex-col justify-between bg-black/40 border border-zinc-800 rounded-xl relative overflow-hidden">
+                <div>
+                  <h3 className="text-xs font-mono tracking-widest text-zinc-400 uppercase font-bold border-b border-zinc-800 pb-2 mb-4 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ff3344] animate-ping"></span>
+                    SYSTEM LINK OVERVIEW
+                  </h3>
+                  <p className="text-[10px] font-mono text-zinc-550 uppercase leading-relaxed mb-4">
+                    Visual telemetry map of secure wireless connection links between central processing core and remote subsystem microcontrollers.
+                  </p>
+                </div>
+                <SubsystemNodeMap />
+              </div>
+            </div>
+
+            {/* Diagnostic Feeds Grid (span 7) */}
+            <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="robotics-card p-5 bg-black/40 border border-zinc-800 rounded-xl flex flex-col justify-between">
+                <span className="text-[9px] font-mono text-zinc-550 uppercase tracking-widest block">THERMAL LOAD</span>
+                <div>
+                  <p className="text-2xl font-bold font-mono text-red-500 mt-1">{isDeviceConnected ? `${sensors.temp}°C` : "OFFLINE"}</p>
+                  <span className="text-[8px] font-mono text-zinc-650 uppercase">CORE CPU TEMP</span>
+                </div>
+              </div>
+
+              <div className="robotics-card p-5 bg-black/40 border border-zinc-800 rounded-xl flex flex-col justify-between">
+                <span className="text-[9px] font-mono text-zinc-550 uppercase tracking-widest block">SOIL MOISTURE</span>
+                <div>
+                  <p className="text-2xl font-bold font-mono text-red-400 mt-1">{isDeviceConnected ? `${sensors.soilMoisture}%` : "OFFLINE"}</p>
+                  <span className="text-[8px] font-mono text-zinc-650 uppercase">NDVI GEOGRAPHIC TRUTH</span>
+                </div>
+              </div>
+
+              <div className="robotics-card p-5 bg-black/40 border border-zinc-800 rounded-xl flex flex-col justify-between">
+                <span className="text-[9px] font-mono text-zinc-550 uppercase tracking-widest block">ATMOSPHERIC METHANE</span>
+                <div>
+                  <p className="text-2xl font-bold font-mono text-red-400 mt-1">{isDeviceConnected ? `${sensors.methane} ppm` : "OFFLINE"}</p>
+                  <span className="text-[8px] font-mono text-zinc-650 uppercase">MQ-4 GAS ARRAY</span>
+                </div>
+              </div>
+
+              <div className="robotics-card p-5 bg-black/40 border border-zinc-800 rounded-xl flex flex-col justify-between">
+                <span className="text-[9px] font-mono text-zinc-550 uppercase tracking-widest block">SIGNAL POWER</span>
+                <div>
+                  <p className="text-2xl font-bold font-mono text-red-500 mt-1">{isDeviceConnected ? `${signalStrength}%` : "OFFLINE"}</p>
+                  <span className="text-[8px] font-mono text-zinc-650 uppercase">ESP32 RSSI INTENSITY</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 4. Live Metric Readout Logs */}
+        {mounted && (
+          <section className="robotics-card p-6 bg-black/40 border border-zinc-800 rounded-xl">
+            <h3 className="text-xs font-mono tracking-widest text-zinc-400 uppercase font-bold border-b border-zinc-800 pb-2 mb-4">
+              LIVE METRIC READOUT FEED
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left font-mono text-[10px] text-zinc-400">
+                <thead>
+                  <tr className="border-b border-zinc-900 text-zinc-500">
+                    <th className="pb-2 uppercase">Timestamp</th>
+                    <th className="pb-2 uppercase">Subsystem</th>
+                    <th className="pb-2 uppercase">Log Event Message</th>
+                    <th className="pb-2 uppercase">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.length > 0 ? (
+                    logs.slice(0, 6).map((log, idx) => (
+                      <tr key={idx} className="border-b border-zinc-950/40 hover:bg-zinc-900/10">
+                        <td className="py-2.5 text-zinc-550">{log.timestamp}</td>
+                        <td className="py-2.5 text-red-400 font-bold uppercase">{log.type}</td>
+                        <td className="py-2.5 text-white uppercase">{log.text}</td>
+                        <td className="py-2.5">
+                          <span className="px-2 py-0.5 rounded text-[8px] border border-zinc-800 bg-zinc-900/30 uppercase text-zinc-400">
+                            NOMINAL
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-zinc-650 uppercase">
+                        No active telemetry received. Connect device to stream.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
       </div>
     </AuraShell>
