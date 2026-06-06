@@ -30,3 +30,5 @@ prettify.py
 scratch_extract.py
 extracted_codepen.html
 formatted_codepen.html
+__pycache__/
+*.pyc
