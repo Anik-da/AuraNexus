@@ -230,6 +230,22 @@ async def get_navigation_command():
     """Return motor commands for ESP32 traversal."""
     return {"command": _NAV_COMMAND}
 
+@router.post("/navigation-command")
+async def set_navigation_command(payload: Dict[str, Any]):
+    """Set active traversal command for physical ESP32."""
+    global _NAV_COMMAND
+    command = payload.get("command", "STOP")
+    _NAV_COMMAND = command
+    
+    # Broadcast to dashboard clients
+    await ws_manager.broadcast({
+        "type": "navigation_update",
+        "command": _NAV_COMMAND,
+        "timestamp": str(datetime.utcnow())
+    })
+    
+    return {"status": "success", "command": _NAV_COMMAND}
+
 @router.get("/current-task")
 async def get_current_task():
     """Return the current active mission schedule task."""

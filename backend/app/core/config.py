@@ -18,8 +18,11 @@ class Settings(BaseSettings):
     HUGGINGFACE_API_TOKEN: str = ""
     LOCAL_DATASET_DIR: str = "c:/AURANEXUS/backend/dataset"
     
-    # CORS
-    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    BACKEND_CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://aura-nexus-esp.web.app"
+    ]
     
     class Config:
         env_file = ".env"

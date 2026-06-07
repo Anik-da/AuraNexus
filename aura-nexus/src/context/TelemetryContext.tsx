@@ -335,6 +335,25 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     } else {
       addLog("Robot emergency halt executed.", "success");
     }
+
+    // Transmit command to FastAPI gateway
+    if (typeof window !== "undefined") {
+      const wsUrl = localStorage.getItem("aura_ws_url");
+      if (wsUrl) {
+        const httpUrl = wsUrl
+          .replace("ws://", "http://")
+          .replace("wss://", "https://")
+          .replace("/ws/telemetry", "/esp32/navigation-command");
+        
+        fetch(httpUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ command: direction.toUpperCase() }),
+        }).catch((err) => console.error("Failed to transmit robot command:", err));
+      }
+    }
   };
 
   const setRobotMode = (mode: TelemetryState["robotMode"]) => {
@@ -360,6 +379,25 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
         camera: { ...prev.camera, pan, tilt, zoom },
       };
     });
+
+    // Transmit camera command to FastAPI gateway
+    if (typeof window !== "undefined") {
+      const wsUrl = localStorage.getItem("aura_ws_url");
+      if (wsUrl) {
+        const httpUrl = wsUrl
+          .replace("ws://", "http://")
+          .replace("wss://", "https://")
+          .replace("/ws/telemetry", "/esp32/navigation-command");
+        
+        fetch(httpUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ command: action.toUpperCase() }),
+        }).catch((err) => console.error("Failed to transmit camera command:", err));
+      }
+    }
   };
 
   const setFeedType = (feedType: TelemetryState["camera"]["feedType"]) => {
